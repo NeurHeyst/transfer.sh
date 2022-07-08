@@ -35,6 +35,6 @@ COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifica
 
 USER ${RUNAS}
 
-ENTRYPOINT ["/go/bin/transfersh", "--listener", ":8080", "--provider", "local"]
+ENTRYPOINT ["/go/bin/transfersh"]
 
 EXPOSE 8080
