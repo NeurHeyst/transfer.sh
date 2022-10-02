@@ -18,7 +18,7 @@ ARG PUID=5000 \
     PGID=5000 \
     RUNAS
 
-RUN mkdir -p /tmp/useradd /tmp/empty && \
+RUN mkdir -p /tmp/useradd && \
     if [ ! -z "$RUNAS" ]; then \
     echo "${RUNAS}:x:${PUID}:${PGID}::/nonexistent:/sbin/nologin" >> /tmp/useradd/passwd && \
     echo "${RUNAS}:!:::::::" >> /tmp/useradd/shadow && \
@@ -29,13 +29,12 @@ FROM scratch AS final
 LABEL maintainer="Andrea Spacca <andrea.spacca@gmail.com>"
 ARG RUNAS
 
-COPY --from=build /tmp/empty /tmp
 COPY --from=build /tmp/useradd/* /etc/
 COPY --from=build --chown=${RUNAS}  /go/bin/transfersh /go/bin/transfersh
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 USER ${RUNAS}
 
-ENTRYPOINT ["/go/bin/transfersh", "--listener", "0.0.0.0:8080", "--provider"]
+ENTRYPOINT ["/go/bin/transfersh", "--listener", "0.0.0.0:8080"]
 
 EXPOSE 8080

@@ -36,9 +36,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dutchcoders/transfer.sh/server/storage"
 	"html"
-	htmlTemplate "html/template"
+	html_template "html/template"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -51,13 +50,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	textTemplate "text/template"
+	text_template "text/template"
 	"time"
 
 	web "github.com/dutchcoders/transfer.sh-web"
 	"github.com/gorilla/mux"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/russross/blackfriday/v2"
+	blackfriday "github.com/russross/blackfriday/v2"
 	"github.com/skip2/go-qrcode"
 	"golang.org/x/net/idna"
 )
@@ -73,24 +72,24 @@ func stripPrefix(path string) string {
 	return strings.Replace(path, web.Prefix+"/", "", -1)
 }
 
-func initTextTemplates() *textTemplate.Template {
-	templateMap := textTemplate.FuncMap{"format": formatNumber}
+func initTextTemplates() *text_template.Template {
+	templateMap := text_template.FuncMap{"format": formatNumber}
 
 	// Templates with functions available to them
-	var templates = textTemplate.New("").Funcs(templateMap)
+	var templates = text_template.New("").Funcs(templateMap)
 	return templates
 }
 
-func initHTMLTemplates() *htmlTemplate.Template {
-	templateMap := htmlTemplate.FuncMap{"format": formatNumber}
+func initHTMLTemplates() *html_template.Template {
+	templateMap := html_template.FuncMap{"format": formatNumber}
 
 	// Templates with functions available to them
-	var templates = htmlTemplate.New("").Funcs(templateMap)
+	var templates = html_template.New("").Funcs(templateMap)
 
 	return templates
 }
 
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
+func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("Approaching Neutral Zone, all systems normal and functioning."))
 }
 
@@ -138,7 +137,7 @@ func (s *Server) previewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var templatePath string
-	var content htmlTemplate.HTML
+	var content html_template.HTML
 
 	switch {
 	case strings.HasPrefix(contentType, "image/"):
@@ -166,9 +165,9 @@ func (s *Server) previewHandler(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(contentType, "text/x-markdown") || strings.HasPrefix(contentType, "text/markdown") {
 			unsafe := blackfriday.Run(data)
 			output := bluemonday.UGCPolicy().SanitizeBytes(unsafe)
-			content = htmlTemplate.HTML(output)
+			content = html_template.HTML(output)
 		} else if strings.HasPrefix(contentType, "text/plain") {
-			content = htmlTemplate.HTML(fmt.Sprintf("<pre>%s</pre>", html.EscapeString(string(data))))
+			content = html_template.HTML(fmt.Sprintf("<pre>%s</pre>", html.EscapeString(string(data))))
 		} else {
 			templatePath = "download.sandbox.html"
 		}
@@ -195,7 +194,7 @@ func (s *Server) previewHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		ContentType    string
-		Content        htmlTemplate.HTML
+		Content        html_template.HTML
 		Filename       string
 		URL            string
 		URLGet         string
@@ -282,7 +281,7 @@ func (s *Server) viewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) notFoundHandler(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(404), 404)
 }
 
@@ -303,15 +302,15 @@ func (s *Server) postHandler(w http.ResponseWriter, r *http.Request) {
 
 	responseBody := ""
 
-	for _, fHeaders := range r.MultipartForm.File {
-		for _, fHeader := range fHeaders {
-			filename := sanitize(fHeader.Filename)
-			contentType := mime.TypeByExtension(filepath.Ext(fHeader.Filename))
+	for _, fheaders := range r.MultipartForm.File {
+		for _, fheader := range fheaders {
+			filename := sanitize(fheader.Filename)
+			contentType := mime.TypeByExtension(filepath.Ext(fheader.Filename))
 
 			var f io.Reader
 			var err error
 
-			if f, err = fHeader.Open(); err != nil {
+			if f, err = fheader.Open(); err != nil {
 				s.logger.Printf("%s", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -460,7 +459,7 @@ func (s *Server) putHandler(w http.ResponseWriter, r *http.Request) {
 
 	contentLength := r.ContentLength
 
-	defer storage.CloseCheck(r.Body.Close)
+	defer CloseCheck(r.Body.Close)
 
 	file, err := ioutil.TempFile(s.tempPath, "transfer-")
 	defer s.cleanTmpFile(file)
@@ -693,7 +692,7 @@ func (s *Server) checkMetadata(ctx context.Context, token, filename string, incr
 	var metadata metadata
 
 	r, _, err := s.storage.Get(ctx, token, fmt.Sprintf("%s.metadata", filename))
-	defer storage.CloseCheck(r.Close)
+	defer CloseCheck(r.Close)
 
 	if err != nil {
 		return metadata, err
@@ -729,7 +728,7 @@ func (s *Server) checkDeletionToken(ctx context.Context, deletionToken, token, f
 	var metadata metadata
 
 	r, _, err := s.storage.Get(ctx, token, fmt.Sprintf("%s.metadata", filename))
-	defer storage.CloseCheck(r.Close)
+	defer CloseCheck(r.Close)
 
 	if s.storage.IsNotExist(err) {
 		return errors.New("metadata doesn't exist")
@@ -807,7 +806,7 @@ func (s *Server) zipHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		reader, _, err := s.storage.Get(r.Context(), token, filename)
-		defer storage.CloseCheck(reader.Close)
+		defer CloseCheck(reader.Close)
 
 		if err != nil {
 			if s.storage.IsNotExist(err) {
@@ -860,10 +859,10 @@ func (s *Server) tarGzHandler(w http.ResponseWriter, r *http.Request) {
 	commonHeader(w, tarfilename)
 
 	gw := gzip.NewWriter(w)
-	defer storage.CloseCheck(gw.Close)
+	defer CloseCheck(gw.Close)
 
 	zw := tar.NewWriter(gw)
-	defer storage.CloseCheck(zw.Close)
+	defer CloseCheck(zw.Close)
 
 	for _, key := range strings.Split(files, ",") {
 		key = resolveKey(key, s.proxyPath)
@@ -877,7 +876,7 @@ func (s *Server) tarGzHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		reader, contentLength, err := s.storage.Get(r.Context(), token, filename)
-		defer storage.CloseCheck(reader.Close)
+		defer CloseCheck(reader.Close)
 
 		if err != nil {
 			if s.storage.IsNotExist(err) {
@@ -921,7 +920,7 @@ func (s *Server) tarHandler(w http.ResponseWriter, r *http.Request) {
 	commonHeader(w, tarfilename)
 
 	zw := tar.NewWriter(w)
-	defer storage.CloseCheck(zw.Close)
+	defer CloseCheck(zw.Close)
 
 	for _, key := range strings.Split(files, ",") {
 		key = resolveKey(key, s.proxyPath)
@@ -935,7 +934,7 @@ func (s *Server) tarHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		reader, contentLength, err := s.storage.Get(r.Context(), token, filename)
-		defer storage.CloseCheck(reader.Close)
+		defer CloseCheck(reader.Close)
 
 		if err != nil {
 			if s.storage.IsNotExist(err) {
@@ -1019,7 +1018,7 @@ func (s *Server) getHandler(w http.ResponseWriter, r *http.Request) {
 
 	contentType := metadata.ContentType
 	reader, contentLength, err := s.storage.Get(r.Context(), token, filename)
-	defer storage.CloseCheck(reader.Close)
+	defer CloseCheck(reader.Close)
 
 	if s.storage.IsNotExist(err) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)

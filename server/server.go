@@ -26,7 +26,7 @@ package server
 
 import (
 	"context"
-	cryptoRand "crypto/rand"
+	crypto_rand "crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
@@ -52,7 +52,6 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	web "github.com/dutchcoders/transfer.sh-web"
-	"github.com/dutchcoders/transfer.sh/server/storage"
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 )
 
@@ -244,7 +243,7 @@ func EnableProfiler() OptionFn {
 }
 
 // UseStorage set storage to use
-func UseStorage(s storage.Storage) OptionFn {
+func UseStorage(s Storage) OptionFn {
 	return func(srvr *Server) {
 		srvr.storage = s
 	}
@@ -333,7 +332,7 @@ type Server struct {
 	purgeDays     time.Duration
 	purgeInterval time.Duration
 
-	storage storage.Storage
+	storage Storage
 
 	forceHTTPS bool
 
@@ -381,7 +380,7 @@ func New(options ...OptionFn) (*Server, error) {
 
 func init() {
 	var seedBytes [8]byte
-	if _, err := cryptoRand.Read(seedBytes[:]); err != nil {
+	if _, err := crypto_rand.Read(seedBytes[:]); err != nil {
 		panic("cannot obtain cryptographically secure seed")
 	}
 	rand.Seed(int64(binary.LittleEndian.Uint64(seedBytes[:])))
@@ -475,7 +474,7 @@ func (s *Server) Run() {
 			return false
 		}
 
-		match = r.Referer() == ""
+		match = (r.Referer() == "")
 
 		u, err := url.Parse(r.Referer())
 		if err != nil {
